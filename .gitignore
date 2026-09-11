@@ -1,4 +1,4 @@
 __pycache__/
-rag_venv/
+lanchainrag_venv/
 chroma_db/
 .env

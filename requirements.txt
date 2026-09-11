@@ -1,0 +1,13 @@
+streamlit
+pandas
+python-dotenv
+
+langchain
+langchain-community
+langchain-openai
+langchain-text-splitters
+langchain-chroma
+
+chromadb
+openai
+tiktoken

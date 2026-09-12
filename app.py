@@ -20,6 +20,17 @@ st.set_page_config(
 
 
 # ============================================================
+# QUESTION LIMIT
+# ============================================================
+
+MAX_QUESTIONS = 10
+
+# Initialize question counter for each user session
+if "question_count" not in st.session_state:
+    st.session_state.question_count = 0
+
+
+# ============================================================
 # TITLE
 # ============================================================
 
@@ -33,6 +44,47 @@ st.markdown(
     **Technology:** LangChain • RAG • Chroma • LLM • Streamlit
     """
 )
+
+st.divider()
+
+
+# ============================================================
+# QUESTION USAGE DISPLAY
+# ============================================================
+
+questions_used = st.session_state.question_count
+questions_remaining = MAX_QUESTIONS - questions_used
+
+col1, col2 = st.columns(2)
+
+with col1:
+    st.metric(
+        "🤖 Questions Used",
+        f"{questions_used} / {MAX_QUESTIONS}"
+    )
+
+with col2:
+    st.metric(
+        "💬 Questions Remaining",
+        f"{questions_remaining}"
+    )
+
+
+# ============================================================
+# QUESTION LIMIT WARNING
+# ============================================================
+
+if questions_remaining == 0:
+
+    st.error(
+        "🚫 You have reached the maximum limit of "
+        f"{MAX_QUESTIONS} questions for this session."
+    )
+
+    st.info(
+        "Please start a new session to continue using "
+        "the AI Support Assistant."
+    )
 
 st.divider()
 
@@ -270,7 +322,8 @@ if selected_product:
     ask_button = st.button(
         "🤖 Ask AI Support Assistant",
         type="primary",
-        use_container_width=True
+        use_container_width=True,
+        disabled=(questions_remaining <= 0)
     )
 
 
@@ -291,6 +344,13 @@ if selected_product:
             )
 
         else:
+
+            # =================================================
+            # INCREASE QUESTION COUNT
+            # =================================================
+
+            st.session_state.question_count += 1
+
 
             # =================================================
             # RETRIEVE RELEVANT TICKETS
@@ -420,7 +480,7 @@ if selected_product:
 
 
 # ============================================================
-# INITIAL STATE
+# NO PRODUCT SELECTED
 # ============================================================
 
 else:

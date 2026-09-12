@@ -82,20 +82,6 @@ vectorstore = load_chroma()
 
 
 # ============================================================
-# NORMALIZE TEXT
-# ============================================================
-
-def normalize_text(text):
-
-    return (
-        str(text)
-        .lower()
-        .strip()
-        .replace(" ", " ")
-    )
-
-
-# ============================================================
 # GET UNIQUE PRODUCTS
 # ============================================================
 
@@ -108,345 +94,329 @@ products = sorted(
 
 
 # ============================================================
-# PRODUCT SEARCH
+# PRODUCT SELECTION
 # ============================================================
 
 st.subheader("1️⃣ Select Your Product")
 
 st.markdown(
-    "Start typing your product name to see available products."
+    "Search and select your product from the dropdown below."
 )
 
 
 # ============================================================
-# SEARCH INPUT
+# TOTAL PRODUCTS
 # ============================================================
 
-product_search = st.text_input(
+total_products = len(products)
+
+col1, col2 = st.columns(2)
+
+with col1:
+
+    st.metric(
+        "📦 Total Products",
+        f"{total_products:,}"
+    )
+
+with col2:
+
+    st.caption(
+        "Type part of a product name in the dropdown "
+        "to quickly find it."
+    )
+
+
+# ============================================================
+# SEARCHABLE PRODUCT DROPDOWN
+# ============================================================
+
+selected_product = st.selectbox(
     "🔍 Search Product",
-    placeholder="Example: Samsung, iPhone, Laptop...",
-    key="product_search"
+    options=[""] + products,
+    index=0,
+    placeholder="Type to search for a product...",
+    key="selected_product"
 )
 
 
 # ============================================================
-# NORMALIZE SEARCH INPUT
+# PRODUCT SELECTED
 # ============================================================
 
-search_text = normalize_text(product_search)
+if selected_product:
 
+    # ========================================================
+    # PRODUCT DATA
+    # ========================================================
 
-# ============================================================
-# LIVE PRODUCT MATCHING
-# ============================================================
-
-if search_text:
-
-    matching_products = [
-        product
-        for product in products
-        if search_text in normalize_text(product)
+    product_data = df[
+        df["Product Purchased"] == selected_product
     ]
 
+    ticket_count = len(product_data)
+
+
     # ========================================================
-    # PRODUCTS FOUND
+    # PRODUCT AVAILABILITY
     # ========================================================
 
-    if matching_products:
+    st.success(
+        f"✅ **{selected_product}** is available "
+        f"in the support knowledge base."
+    )
 
-        st.caption(
-            f"🔎 {len(matching_products)} matching product(s) found"
-        )
-
-        # ----------------------------------------------------
-        # PRODUCT SELECTION
-        # ----------------------------------------------------
-
-        selected_product = st.selectbox(
-            "Choose your product",
-            matching_products,
-            key="selected_product"
-        )
+    st.info(
+        f"📚 We have **{ticket_count:,} historical "
+        f"support tickets** for this product."
+    )
 
 
-        # ====================================================
-        # PRODUCT INFORMATION
-        # ====================================================
+    # ========================================================
+    # PRODUCT STATISTICS
+    # ========================================================
 
-        product_data = df[
-            df["Product Purchased"] == selected_product
-        ]
+    with st.expander("📊 View Product Statistics"):
 
-        ticket_count = len(product_data)
+        col1, col2, col3 = st.columns(3)
 
 
         # ----------------------------------------------------
-        # PRODUCT AVAILABILITY CONFIRMATION
+        # TOTAL TICKETS
         # ----------------------------------------------------
 
-        st.success(
-            f"✅ **{selected_product}** is available "
-            f"in the support knowledge base."
-        )
+        with col1:
 
-        st.info(
-            f"📚 We have **{ticket_count:,} historical "
-            f"support tickets** for this product."
-        )
+            st.metric(
+                "Product Tickets",
+                f"{ticket_count:,}"
+            )
 
 
-        # ====================================================
-        # PRODUCT STATISTICS
-        # ====================================================
+        # ----------------------------------------------------
+        # MOST COMMON ISSUE
+        # ----------------------------------------------------
 
-        with st.expander("📊 View Product Statistics"):
+        with col2:
 
-            col1, col2, col3 = st.columns(3)
+            if not product_data.empty:
 
-
-            # ------------------------------------------------
-            # TOTAL TICKETS
-            # ------------------------------------------------
-
-            with col1:
-
-                st.metric(
-                    "Product Tickets",
-                    f"{ticket_count:,}"
-                )
-
-
-            # ------------------------------------------------
-            # MOST COMMON ISSUE
-            # ------------------------------------------------
-
-            with col2:
-
-                if not product_data.empty:
-
-                    most_common_type = (
-                        product_data["Ticket Type"]
-                        .value_counts()
-                        .index[0]
-                    )
-
-                    st.metric(
-                        "Most Common Issue",
-                        most_common_type
-                    )
-
-
-            # ------------------------------------------------
-            # HIGH PRIORITY TICKETS
-            # ------------------------------------------------
-
-            with col3:
-
-                high_priority_count = len(
-                    product_data[
-                        product_data["Ticket Priority"]
-                        .astype(str)
-                        .str.lower()
-                        == "high"
-                    ]
+                most_common_type = (
+                    product_data["Ticket Type"]
+                    .value_counts()
+                    .index[0]
                 )
 
                 st.metric(
-                    "High Priority Tickets",
-                    f"{high_priority_count:,}"
-                )
-
-
-        st.divider()
-
-
-        # ====================================================
-        # CUSTOMER PROBLEM
-        # ====================================================
-
-        st.subheader("2️⃣ Describe Your Problem")
-
-        question = st.text_area(
-            "What problem are you experiencing?",
-            placeholder=(
-                f"Example: My {selected_product} "
-                "is not working properly. "
-                "What should I do?"
-            ),
-            height=150,
-            key="customer_question"
-        )
-
-
-        # ====================================================
-        # ASK AI BUTTON
-        # ====================================================
-
-        ask_button = st.button(
-            "🤖 Ask AI Support Assistant",
-            type="primary",
-            use_container_width=True
-        )
-
-
-        # ====================================================
-        # PROCESS QUESTION
-        # ====================================================
-
-        if ask_button:
-
-            # ------------------------------------------------
-            # VALIDATE QUESTION
-            # ------------------------------------------------
-
-            if not question.strip():
-
-                st.warning(
-                    "⚠️ Please describe your problem first."
+                    "Most Common Issue",
+                    most_common_type
                 )
 
             else:
 
-                # ============================================
-                # RETRIEVE RELEVANT TICKETS
-                # ============================================
+                st.metric(
+                    "Most Common Issue",
+                    "N/A"
+                )
+
+
+        # ----------------------------------------------------
+        # HIGH PRIORITY TICKETS
+        # ----------------------------------------------------
+
+        with col3:
+
+            high_priority_count = len(
+                product_data[
+                    product_data["Ticket Priority"]
+                    .astype(str)
+                    .str.lower()
+                    .str.strip()
+                    == "high"
+                ]
+            )
+
+            st.metric(
+                "High Priority Tickets",
+                f"{high_priority_count:,}"
+            )
+
+
+    st.divider()
+
+
+    # ========================================================
+    # CUSTOMER PROBLEM
+    # ========================================================
+
+    st.subheader("2️⃣ Describe Your Problem")
+
+    question = st.text_area(
+        "What problem are you experiencing?",
+        placeholder=(
+            f"Example: My {selected_product} "
+            "is not working properly. "
+            "What should I do?"
+        ),
+        height=150,
+        key="customer_question"
+    )
+
+
+    # ========================================================
+    # ASK AI BUTTON
+    # ========================================================
+
+    ask_button = st.button(
+        "🤖 Ask AI Support Assistant",
+        type="primary",
+        use_container_width=True
+    )
+
+
+    # ========================================================
+    # PROCESS QUESTION
+    # ========================================================
+
+    if ask_button:
+
+        # ----------------------------------------------------
+        # VALIDATE QUESTION
+        # ----------------------------------------------------
+
+        if not question.strip():
+
+            st.warning(
+                "⚠️ Please describe your problem first."
+            )
+
+        else:
+
+            # =================================================
+            # RETRIEVE RELEVANT TICKETS
+            # =================================================
+
+            with st.spinner(
+                "🔎 Searching historical support tickets..."
+            ):
+
+                relevant_docs = get_relevant_tickets(
+                    vectorstore=vectorstore,
+                    question=question,
+                    product=selected_product,
+                    k=5
+                )
+
+
+            # =================================================
+            # NO RELEVANT TICKETS
+            # =================================================
+
+            if not relevant_docs:
+
+                st.warning(
+                    "⚠️ No relevant historical tickets "
+                    "were found for this product."
+                )
+
+                st.info(
+                    """
+                    The product exists in the knowledge base,
+                    but no sufficiently similar historical
+                    support case was found.
+
+                    Try describing the problem using different
+                    words or provide more details.
+                    """
+                )
+
+
+            # =================================================
+            # RELEVANT TICKETS FOUND
+            # =================================================
+
+            else:
+
+                # =============================================
+                # GENERATE AI ANSWER
+                # =============================================
 
                 with st.spinner(
-                    "🔎 Searching historical support tickets..."
+                    "🤖 Generating AI recommendation..."
                 ):
 
-                    relevant_docs = get_relevant_tickets(
-                        vectorstore=vectorstore,
+                    answer = generate_answer(
                         question=question,
                         product=selected_product,
-                        k=5
+                        documents=relevant_docs
                     )
 
 
-                # ============================================
-                # NO RELEVANT TICKETS
-                # ============================================
+                # =============================================
+                # DISPLAY AI RESPONSE
+                # =============================================
 
-                if not relevant_docs:
+                st.subheader(
+                    "3️⃣ AI Support Recommendation"
+                )
 
-                    st.warning(
-                        "⚠️ No relevant historical tickets "
-                        "were found for this product."
+                st.markdown(answer)
+
+                st.divider()
+
+
+                # =============================================
+                # SOURCE TICKETS
+                # =============================================
+
+                st.subheader(
+                    "📚 Historical Tickets Used"
+                )
+
+                st.caption(
+                    "These support tickets were retrieved "
+                    "from Chroma using semantic similarity "
+                    "and the selected product."
+                )
+
+
+                # =============================================
+                # DISPLAY RETRIEVED DOCUMENTS
+                # =============================================
+
+                for index, document in enumerate(
+                    relevant_docs,
+                    start=1
+                ):
+
+                    ticket_id = document.metadata.get(
+                        "ticket_id",
+                        "Unknown"
                     )
 
-                    st.info(
-                        """
-                        The product exists in the knowledge base,
-                        but no sufficiently similar historical
-                        support case was found.
+                    priority = document.metadata.get(
+                        "priority",
+                        "Unknown"
+                    )
 
-                        Try describing the problem using different
-                        words or provide more details.
-                        """
+                    status = document.metadata.get(
+                        "status",
+                        "Unknown"
                     )
 
 
-                # ============================================
-                # RELEVANT TICKETS FOUND
-                # ============================================
-
-                else:
-
-                    # ========================================
-                    # GENERATE AI ANSWER
-                    # ========================================
-
-                    with st.spinner(
-                        "🤖 Generating AI recommendation..."
+                    with st.expander(
+                        f"🎫 Ticket {index} — #{ticket_id}"
                     ):
 
-                        answer = generate_answer(
-                            question=question,
-                            product=selected_product,
-                            documents=relevant_docs
+                        st.caption(
+                            f"Priority: {priority} | "
+                            f"Status: {status}"
                         )
 
-
-                    # ========================================
-                    # DISPLAY AI RESPONSE
-                    # ========================================
-
-                    st.subheader(
-                        "3️⃣ AI Support Recommendation"
-                    )
-
-                    st.markdown(answer)
-
-                    st.divider()
-
-
-                    # ========================================
-                    # SOURCE TICKETS
-                    # ========================================
-
-                    st.subheader(
-                        "📚 Historical Tickets Used"
-                    )
-
-                    st.caption(
-                        "These support tickets were retrieved "
-                        "from Chroma using semantic similarity "
-                        "and the selected product."
-                    )
-
-
-                    # ========================================
-                    # DISPLAY RETRIEVED DOCUMENTS
-                    # ========================================
-
-                    for index, document in enumerate(
-                        relevant_docs,
-                        start=1
-                    ):
-
-                        ticket_id = document.metadata.get(
-                            "ticket_id",
-                            "Unknown"
+                        st.write(
+                            document.page_content
                         )
-
-                        priority = document.metadata.get(
-                            "priority",
-                            "Unknown"
-                        )
-
-                        status = document.metadata.get(
-                            "status",
-                            "Unknown"
-                        )
-
-
-                        with st.expander(
-                            f"🎫 Ticket {index} — #{ticket_id}"
-                        ):
-
-                            st.caption(
-                                f"Priority: {priority} | "
-                                f"Status: {status}"
-                            )
-
-                            st.write(
-                                document.page_content
-                            )
-
-
-    # ========================================================
-    # NO PRODUCT FOUND
-    # ========================================================
-
-    else:
-
-        st.error(
-            f"❌ No product found for **'{product_search}'**."
-        )
-
-        st.caption(
-            "Try entering another part of the product name."
-        )
 
 
 # ============================================================
@@ -456,7 +426,7 @@ if search_text:
 else:
 
     st.info(
-        "👆 Start typing to search available products."
+        "👆 Select a product from the dropdown to continue."
     )
 
 

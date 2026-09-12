@@ -2,6 +2,14 @@
 
 from langchain_chroma import Chroma
 
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+if not os.getenv("OPENAI_API_KEY"):
+    raise ValueError("OPENAI_API_KEY is missing.")
+
 from langchain_openai import (
     OpenAIEmbeddings,
     ChatOpenAI

@@ -1,14 +1,21 @@
-# This handles 1. chroma 2. product filtering 3. sematic search 4. LLM 5. RAG Prompt
+# ============================================================
+# RAG CHAIN
+# Handles:
+# 1. Chroma
+# 2. Product filtering
+# 3. Semantic search
+# 4. LLM
+# 5. RAG Prompt
+# ============================================================
 
-from langchain_chroma import Chroma
 
 import os
+
+import streamlit as st
+
 from dotenv import load_dotenv
 
-load_dotenv()
-
-if not os.getenv("OPENAI_API_KEY"):
-    raise ValueError("OPENAI_API_KEY is missing.")
+from langchain_chroma import Chroma
 
 from langchain_openai import (
     OpenAIEmbeddings,
@@ -20,25 +27,64 @@ from langchain_core.prompts import (
 )
 
 
-# ==================================================
+# ============================================================
+# LOAD OPENAI API KEY
+# ============================================================
+
+# Load .env for local development
+load_dotenv()
+
+
+# First try environment variable
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+
+# If environment variable is not available,
+# try Streamlit Cloud Secrets
+if not OPENAI_API_KEY:
+
+    try:
+        OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
+
+    except Exception:
+
+        OPENAI_API_KEY = None
+
+
+# ============================================================
+# CHECK API KEY
+# ============================================================
+
+if not OPENAI_API_KEY:
+
+    raise ValueError(
+        "OPENAI_API_KEY is missing. "
+        "Please add OPENAI_API_KEY to Streamlit Secrets."
+    )
+
+
+# Make the API key available to OpenAI/LangChain
+os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
+
+
+# ============================================================
 # CONFIGURATION
-# ==================================================
+# ============================================================
 
 CHROMA_PATH = "chroma_db"
 
 COLLECTION_NAME = "customer_support_tickets"
 
 
-# ==================================================
+# ============================================================
 # LOAD CHROMA DATABASE
-# ==================================================
+# ============================================================
 
 def load_vectorstore():
 
     embeddings = OpenAIEmbeddings(
         model="text-embedding-3-small"
     )
-
 
     vectorstore = Chroma(
 
@@ -49,13 +95,12 @@ def load_vectorstore():
         persist_directory=CHROMA_PATH
     )
 
-
     return vectorstore
 
 
-# ==================================================
+# ============================================================
 # RETRIEVE RELEVANT TICKETS
-# ==================================================
+# ============================================================
 
 def get_relevant_tickets(
     vectorstore,
@@ -71,7 +116,6 @@ def get_relevant_tickets(
     2. Semantic similarity
     """
 
-
     documents = vectorstore.similarity_search(
 
         query=question,
@@ -83,13 +127,12 @@ def get_relevant_tickets(
         }
     )
 
-
     return documents
 
 
-# ==================================================
+# ============================================================
 # GENERATE RAG ANSWER
-# ==================================================
+# ============================================================
 
 def generate_answer(
     question,
@@ -102,9 +145,9 @@ def generate_answer(
         return None
 
 
-    # ==================================================
+    # ========================================================
     # BUILD CONTEXT
-    # ==================================================
+    # ========================================================
 
     context_parts = []
 
@@ -129,11 +172,12 @@ Historical Ticket {index}
     )
 
 
-    # ==================================================
+    # ========================================================
     # RAG PROMPT
-    # ==================================================
+    # ========================================================
 
     prompt = ChatPromptTemplate.from_template(
+
         """
 You are an AI Customer Support Copilot.
 
@@ -201,9 +245,9 @@ agent could send to the customer.
     )
 
 
-    # ==================================================
+    # ========================================================
     # FORMAT PROMPT
-    # ==================================================
+    # ========================================================
 
     formatted_prompt = prompt.format(
 
@@ -215,9 +259,9 @@ agent could send to the customer.
     )
 
 
-    # ==================================================
+    # ========================================================
     # LLM
-    # ==================================================
+    # ========================================================
 
     llm = ChatOpenAI(
 
@@ -227,9 +271,9 @@ agent could send to the customer.
     )
 
 
-    # ==================================================
+    # ========================================================
     # GENERATE RESPONSE
-    # ==================================================
+    # ========================================================
 
     response = llm.invoke(
         formatted_prompt
